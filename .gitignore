@@ -1,0 +1,13 @@
+# Secrets — never commit
+s3.json
+*.secret
+*.env
+
+# Model weights — live in S3, not Git
+models/
+*.safetensors
+*.bin
+
+# Python / tool junk
+__pycache__/
+.cache/

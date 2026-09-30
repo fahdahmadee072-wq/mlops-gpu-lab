@@ -1,0 +1,96 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ml-serving
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sentiment-api
+  namespace: ml-serving
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate                 # 1 GPU: stop old pod before starting new one
+  selector:
+    matchLabels:
+      app: sentiment-api
+  template:
+    metadata:
+      labels:
+        app: sentiment-api
+    spec:
+      runtimeClassName: nvidia
+      initContainers:
+      - name: fetch-model                         # runs FIRST, must succeed
+        image: localhost:5000/aws-cli:2.36.34
+        args:
+        - s3
+        - sync
+        - s3://models/sentiment/v1/               # FROM: your S3 (SeaweedFS)
+        - /models/sentiment-v1/                   # TO: shared folder
+        - --exclude
+        - ".cache/*"
+        envFrom:
+        - secretRef:
+            name: s3-model-reader                 # AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY
+        env:
+        - name: AWS_ENDPOINT_URL                  # talk to SeaweedFS, not Amazon
+          value: http://seaweedfs-s3.storage:8333
+        - name: AWS_REGION
+          value: us-east-1
+        volumeMounts:
+        - name: model-cache
+          mountPath: /models
+      containers:
+      - name: api
+        image: localhost:5000/sentiment-api:v1
+        env:
+        - name: MODEL_ID                          # a folder path, not a HF name
+          value: /models/sentiment-v1
+        - name: HF_HUB_OFFLINE                    # never contact Hugging Face
+          value: "1"
+        ports:
+        - containerPort: 8000
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "2Gi"
+          limits:
+            memory: "4Gi"
+            nvidia.com/gpu: 1
+        startupProbe:
+          httpGet:
+            path: /healthz
+            port: 8000
+          periodSeconds: 10
+          failureThreshold: 30                    # 5 min is plenty now (local load)
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 8000
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8000
+          periodSeconds: 20
+          failureThreshold: 3
+        volumeMounts:
+        - name: model-cache
+          mountPath: /models
+      volumes:
+      - name: model-cache
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sentiment-api
+  namespace: ml-serving
+spec:
+  selector:
+    app: sentiment-api
+  ports:
+  - port: 80
+    targetPort: 8000
