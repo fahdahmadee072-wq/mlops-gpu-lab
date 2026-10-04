@@ -1,0 +1,20 @@
+dex:
+  enabled: true
+
+configs:
+  cm:
+    url: https://localhost:8081
+    dex.config: |
+      connectors:
+        - type: github
+          id: github
+          name: GitHub
+          config:
+            clientID: Ov23lir0ALhM2BxXXnLx
+            clientSecret: $argocd-github-sso:dex.github.clientSecret
+            orgs:
+              - name: fahd-mlops-lab
+  rbac:
+    policy.default: ""
+    policy.csv: |
+      g, fahd-mlops-lab:admins, role:admin
