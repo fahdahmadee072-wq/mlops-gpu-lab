@@ -88,6 +88,8 @@ kind: Service
 metadata:
   name: sentiment-api
   namespace: ml-serving
+  labels:
+    gitops-test: "one"
 spec:
   selector:
     app: sentiment-api
