@@ -11,3 +11,4 @@ models/
 # Python / tool junk
 __pycache__/
 .cache/
+scripts/get_helm.sh

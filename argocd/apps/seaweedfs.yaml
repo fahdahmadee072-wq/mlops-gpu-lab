@@ -1,0 +1,14 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: seaweedfs
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/fahdahmadee072-wq/mlops-gpu-lab.git
+    targetRevision: HEAD
+    path: platform/seaweedfs
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: storage
